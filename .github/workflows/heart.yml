@@ -1,0 +1,34 @@
+name: PAYTON_REMOTE_HEART
+
+on:
+  schedule:
+    - cron: "0 */12 * * *"
+  workflow_dispatch:
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create heartbeat artifact
+        run: |
+          TS=$(date -Is)
+          mkdir -p artifacts
+          cat > artifacts/HEART_REMOTE.json <<EOF
+          {
+            "heartbeat": "ACTIVE",
+            "layer": "REMOTE",
+            "source": "GITHUB_ACTIONS",
+            "timestamp": "$TS",
+            "status": "ALIVE"
+          }
+          EOF
+          sha256sum artifacts/HEART_REMOTE.json > artifacts/HEART_REMOTE.json.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PAYTON_REMOTE_HEART
+          path: artifacts/*
