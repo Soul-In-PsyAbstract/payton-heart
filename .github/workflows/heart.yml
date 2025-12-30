@@ -2,7 +2,12 @@ name: PAYTON_REMOTE_HEART
 
 on:
   schedule:
-    - cron: "15 */4 * * *"
+    - cron: "15 0 * * *"
+    - cron: "15 4 * * *"
+    - cron: "15 8 * * *"
+    - cron: "15 12 * * *"
+    - cron: "15 16 * * *"
+    - cron: "15 20 * * *"
   workflow_dispatch:
 
 jobs:
@@ -12,28 +17,33 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      TS=$(date -Is)
-RUN_ID="${GITHUB_RUN_ID:-unknown}"
-RUN_NUM="${GITHUB_RUN_NUMBER:-unknown}"
-REPO="${GITHUB_REPOSITORY:-unknown}"
+      - name: Create heartbeat artifact (ATTEMPT ONLY)
+        shell: bash
+        run: |
+          set -euo pipefail
 
-mkdir -p artifacts
+          TS=$(date -Is)
+          RUN_ID="${GITHUB_RUN_ID:-unknown}"
+          RUN_NUM="${GITHUB_RUN_NUMBER:-unknown}"
+          REPO="${GITHUB_REPOSITORY:-unknown}"
 
-cat > artifacts/HEART_REMOTE.json <<EOF
-{
-  "event": "HEARTBEAT_ATTEMPT",
-  "layer": "REMOTE",
-  "source": "GITHUB_ACTIONS",
-  "timestamp": "$TS",
-  "run_id": "$RUN_ID",
-  "run_number": "$RUN_NUM",
-  "repo": "$REPO",
-  "status": "ATTEMPTED",
-  "result": "OK"
-}
-EOF
+          mkdir -p artifacts
 
-sha256sum artifacts/HEART_REMOTE.json > artifacts/HEART_REMOTE.json.sha256
+          cat > artifacts/HEART_REMOTE.json <<EOF
+          {
+            "event": "HEARTBEAT_ATTEMPT",
+            "layer": "REMOTE",
+            "source": "GITHUB_ACTIONS",
+            "timestamp": "$TS",
+            "run_id": "$RUN_ID",
+            "run_number": "$RUN_NUM",
+            "repo": "$REPO",
+            "status": "ATTEMPTED",
+            "result": "OK"
+          }
+          EOF
+
+          sha256sum artifacts/HEART_REMOTE.json > artifacts/HEART_REMOTE.json.sha256
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
