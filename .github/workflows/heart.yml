@@ -2,7 +2,7 @@ name: PAYTON_REMOTE_HEART
 
 on:
   schedule:
-    - cron: "0 */12 * * *"
+    - cron: "15 */4 * * *"
   workflow_dispatch:
 
 jobs:
