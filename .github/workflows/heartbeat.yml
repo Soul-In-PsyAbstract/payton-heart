@@ -1,0 +1,13 @@
+name: payton-heartbeat
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Heartbeat ping
+        run: echo "PAYTON HEARTBEAT ALIVE $(date -u)"
