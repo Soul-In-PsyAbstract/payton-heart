@@ -1,0 +1,66 @@
+name: PAYTON_DAILY_RECEIPT
+on:
+  schedule:
+    - cron: "3 2 * * *"   # ~04:03 Asia/Jerusalem ≈ 02:03 UTC (проверь летнее/зимнее)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  daily_receipt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Timestamp
+        id: ts
+        run: |
+          TS_UTC="$(date -u +%Y-%m-%d__%H-%M-%S__UTC)"
+          DAY_UTC="$(date -u +%Y-%m-%d)"
+          echo "TS_UTC=$TS_UTC" >> $GITHUB_OUTPUT
+          echo "DAY_UTC=$DAY_UTC" >> $GITHUB_OUTPUT
+
+      - name: Write receipt (facts only)
+        run: |
+          mkdir -p evidence/daily
+          f="evidence/daily/RECEIPT__${{ steps.ts.outputs.DAY_UTC }}__${{ steps.ts.outputs.TS_UTC }}.txt"
+          cat > "$f" <<'EOF'
+          🔴 RECEIPT · CI DAILY TICK (FACTS ONLY)
+          SYSTEM: SoulInPsyAbstract
+          SCOPE: REMOTE / CI
+          MODE: LEGAL · FACTUAL
+          EXECUTION_CONTEXT=CI
+          RUNTIME=REMOTE
+          CLAIMS=NONE
+
+          FACTS:
+          - This job executed in GitHub Actions as scheduled or manually dispatched.
+          - This receipt is an append-only evidence artifact.
+          - No intent, no interpretation, no external side effects recorded here.
+          EOF
+          echo "WROTE=$f" >> $GITHUB_ENV
+
+      - name: Hash receipt
+        run: |
+          sha256sum "$WROTE" > "$WROTE.sha256"
+
+      - name: Update manifest (append-only)
+        run: |
+          m="evidence/manifests/MANIFEST__DAILY__${{ steps.ts.outputs.DAY_UTC }}.tsv"
+          mkdir -p evidence/manifests
+          if [ ! -f "$m" ]; then
+            echo -e "filename\tbytes\tsha256" > "$m"
+          fi
+          b="$(wc -c < "$WROTE" | tr -d ' ')"
+          h="$(cut -d' ' -f1 < "$WROTE.sha256")"
+          echo -e "$(basename "$WROTE")\t$b\t$h" >> "$m"
+          sha256sum "$m" > "$m.sha256"
+
+      - name: Commit evidence
+        run: |
+          git config user.name "payton-ci"
+          git config user.email "payton-ci@users.noreply.github.com"
+          git add evidence/daily evidence/manifests
+          git commit -m "evidence: daily receipt ${{ steps.ts.outputs.TS_UTC }}" || exit 0
+          git push
