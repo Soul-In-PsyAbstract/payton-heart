@@ -1,0 +1,39 @@
+name: PAYTON_WEEKLY_SEAL
+on:
+  schedule:
+    - cron: "0 18 * * 6"   # суббота UTC; подгони под 20:00 Asia/Jerusalem
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  weekly_seal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build weekly seal
+        run: |
+          mkdir -p evidence/weekly
+          WEEK="$(date -u +%G-W%V)"
+          OUTDIR="evidence/weekly/WEEKLY_SEAL__${WEEK}__UTC"
+          rm -rf "$OUTDIR"
+          mkdir -p "$OUTDIR"
+
+          # Include only evidence (facts), not source code
+          cp -a evidence/daily "$OUTDIR/" 2>/dev/null || true
+          cp -a evidence/manifests "$OUTDIR/" 2>/dev/null || true
+
+          ( cd "$OUTDIR" && find . -type f -print0 | xargs -0 sha256sum ) > "$OUTDIR/ALL__SHA256.txt"
+
+          ( cd evidence/weekly && zip -r "WEEKLY_SEAL__${WEEK}__UTC.zip" "$(basename "$OUTDIR")" >/dev/null )
+          sha256sum "evidence/weekly/WEEKLY_SEAL__${WEEK}__UTC.zip" > "evidence/weekly/WEEKLY_SEAL__${WEEK}__UTC.zip.sha256"
+
+      - name: Commit weekly seal
+        run: |
+          git config user.name "payton-ci"
+          git config user.email "payton-ci@users.noreply.github.com"
+          git add evidence/weekly
+          git commit -m "evidence: weekly seal" || exit 0
+          git push
