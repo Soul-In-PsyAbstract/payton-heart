@@ -1,0 +1,48 @@
+AUTOMATION PHASE 3 · CLOUDFLARE WORKER + KV (HEART) · DOMAIN ROUTE
+STATUS: DECLARATIVE FIXATION
+MODE: GOVERNANCE / VALIDATION ONLY
+
+DATE: 2025-12-30
+TIME: 2025-12-30_17-43 (Asia/Jerusalem)
+
+CORE CANON: v1.1.9 (LOCKED)
+
+SELECTED HEART DOMAIN:
+- soulinpsy.info
+
+ROLE SPLIT (LOCKED):
+- Worker = HEART EXECUTOR (writes facts)
+- KV     = SOURCE OF TRUTH (stores facts)
+- Domain = ADDRESS (routes requests to Worker)
+- GitHub = CLOCK WITH MEMORY (scheduler, later)
+
+ENDPOINTS (PUBLIC, READ-SAFE):
+- https://soulinpsy.info/heartbeat   -> returns last heartbeat (read-only view)
+- https://soulinpsy.info/status     -> returns last-known state + last_result + last_reason
+- https://soulinpsy.info/history    -> returns history_tail (last N events)
+
+WRITE PATH (NOT PUBLIC BY DEFAULT):
+- /ingest (optional) called by GitHub Actions later
+- must be protected (token/header) when enabled
+
+CLOUDFLARE OBJECTS TO CREATE (NO CODE HERE):
+1) Cloudflare account: add domain soulinpsy.info
+2) Worker: payton-heart (name is stable)
+3) KV namespace: PAYTON_STATUS
+4) Worker route:
+   - soulinpsy.info/*  -> payton-heart
+   OR minimal:
+   - soulinpsy.info/heartbeat*
+   - soulinpsy.info/status*
+   - soulinpsy.info/history*
+
+TRUTH RULE:
+- KV is truth. Worker writes truth. GitHub only schedules.
+- Silence = failure.
+- Phone is observer only.
+
+PHASE 3 DONE CRITERIA:
+- Domain resolves via Cloudflare
+- Worker route answers /status (even with placeholder state)
+- KV contains required keys (as per Phase 2 spec)
+
