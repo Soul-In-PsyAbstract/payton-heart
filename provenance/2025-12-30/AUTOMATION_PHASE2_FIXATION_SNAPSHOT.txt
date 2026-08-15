@@ -1,0 +1,17 @@
+GOVERNANCE SNAPSHOT — PHASE 2
+
+DATE: 2025-12-30
+TIME: 2025-12-30_17-08 (Asia/Jerusalem)
+
+CORE CANON:
+- VERSION: v1.1.9
+- STATE: LOCKED
+
+PHASE:
+- NUMBER: 2
+- NAME: HEART_ENGINE
+- STATUS: DECLARATIVE (NO EXECUTION)
+
+TRUTH RULE:
+If it is not logged, it did not happen.
+exit code is NOT truth.
