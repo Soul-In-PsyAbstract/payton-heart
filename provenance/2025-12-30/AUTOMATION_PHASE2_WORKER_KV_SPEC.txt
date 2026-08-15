@@ -1,0 +1,35 @@
+AUTOMATION PHASE 2 · HEART ENGINE (WORKER + KV)
+STATUS: DECLARATIVE
+MODE: GOVERNANCE / VALIDATION ONLY
+
+Worker + KV = HEART WITH MEMORY
+
+NOT a scheduler
+NOT a filesystem
+NOT a database cluster
+
+ALLOWED:
+- write heartbeat fact
+- write timeline fact
+- update last-known KV state
+- append history_tail event
+
+FORBIDDEN:
+- scheduling
+- ZIP creation
+- retro mutations
+- silent overwrite
+
+KV NAMESPACE: PAYTON_STATUS
+
+KEYS:
+- last_heartbeat_iso
+- last_timeline_iso
+- last_dedupe_iso
+- last_result (OK | FAIL | MISSED)
+- last_reason
+- core_canon_version = v1.1.9
+- architecture_addendum = 3-layer-heart-off-phone@2025-12-29
+- history_tail (JSON, last N events)
+
+Silence = protocol violation.
