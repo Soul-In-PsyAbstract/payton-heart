@@ -25,7 +25,7 @@ jobs:
         run: |
           mkdir -p evidence/daily
           f="evidence/daily/RECEIPT__${{ steps.ts.outputs.DAY_UTC }}__${{ steps.ts.outputs.TS_UTC }}.txt"
-          cat > "$f" <<'EOF'
+          cat > "$f" <<EOF
           🔴 RECEIPT · CI DAILY TICK (FACTS ONLY)
           SYSTEM: SoulInPsyAbstract
           SCOPE: REMOTE / CI
@@ -33,6 +33,11 @@ jobs:
           EXECUTION_CONTEXT=CI
           RUNTIME=REMOTE
           CLAIMS=NONE
+
+          RUN_ID=$GITHUB_RUN_ID
+          RUN_NUMBER=$GITHUB_RUN_NUMBER
+          COMMIT_SHA=$GITHUB_SHA
+          TS_UTC=${{ steps.ts.outputs.TS_UTC }}
 
           FACTS:
           - This job executed in GitHub Actions as scheduled or manually dispatched.
