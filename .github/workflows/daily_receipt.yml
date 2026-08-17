@@ -62,6 +62,17 @@ jobs:
           echo -e "$(basename "$WROTE")\t$b\t$h" >> "$m"
           sha256sum "$m" > "$m.sha256"
 
+      - name: Check payload has not gone stale (cross-day duplicate detection)
+        run: |
+          dupes="$(cut -f3 evidence/manifests/MANIFEST__DAILY__*.tsv | grep -v '^sha256$' | sort | uniq -d)"
+          if [ -n "$dupes" ]; then
+            echo "::error::Today's receipt payload hash matches at least one previous day. The generator is producing stale/duplicate content, not a genuinely new artifact."
+            echo "Duplicate hash(es):"
+            echo "$dupes"
+            exit 1
+          fi
+          echo "OK: today's payload hash is unique across all recorded days."
+
       - name: Commit evidence
         run: |
           git config user.name "payton-ci"
