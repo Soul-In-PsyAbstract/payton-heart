@@ -64,22 +64,30 @@ jobs:
 
       - name: Check payload has not gone stale (cross-day duplicate detection)
         run: |
-          DAY="${{ steps.ts.outputs.DAY_UTC }}"
-          today_file="evidence/manifests/MANIFEST__DAILY__${DAY}.tsv"
-          today_hash="$(tail -1 "$today_file" | cut -f3)"
+          # Compare only RUN_NUMBER + COMMIT_SHA, not the whole receipt. TS_UTC
+          # (date -u with seconds) and RUN_ID (globally unique per run) differ on
+          # every single execution by construction, so hashing the full file
+          # masks the one case that actually matters: provenance itself failing
+          # to advance while those two noise fields still tick over normally.
+          # See dipankarsarkar's masking analysis, 2026-08-20: with the old
+          # whole-file hash, 14 of 15 field-subset masks still passed — only
+          # masking all 4 fields at once ever made the gate fire.
+          sig() { grep -E '^(RUN_NUMBER|COMMIT_SHA)=' "$1" | sha256sum | cut -d' ' -f1; }
+          today_file="$WROTE"
+          today_sig="$(sig "$today_file")"
           match=""
-          for m in evidence/manifests/MANIFEST__DAILY__*.tsv; do
-            [ "$m" = "$today_file" ] && continue
-            if cut -f3 "$m" | grep -qx "$today_hash"; then
-              match="$m"
+          for f in evidence/daily/RECEIPT__*.txt; do
+            [ "$f" = "$today_file" ] && continue
+            if [ "$(sig "$f")" = "$today_sig" ]; then
+              match="$f"
               break
             fi
           done
           if [ -n "$match" ]; then
-            echo "::error::Today's receipt payload hash ($today_hash) matches a previous day's payload ($match). The generator is producing stale/duplicate content, not a genuinely new artifact."
+            echo "::error::Today's RUN_NUMBER/COMMIT_SHA signature matches $match — provenance did not advance, even though TS_UTC/RUN_ID differ."
             exit 1
           fi
-          echo "OK: today's payload hash ($today_hash) does not match any previous day."
+          echo "OK: RUN_NUMBER/COMMIT_SHA signature ($today_sig) is new."
 
       - name: Commit evidence
         run: |
