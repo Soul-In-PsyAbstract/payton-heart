@@ -147,6 +147,7 @@ jobs:
         run: |
           git config user.name "payton-ci"
           git config user.email "payton-ci@users.noreply.github.com"
-          git add evidence/daily evidence/manifests evidence/gaps
+          git add evidence/daily evidence/manifests
+          [ -d evidence/gaps ] && git add evidence/gaps
           git commit -m "evidence: daily receipt ${{ steps.ts.outputs.TS_UTC }}" || exit 0
           git push
