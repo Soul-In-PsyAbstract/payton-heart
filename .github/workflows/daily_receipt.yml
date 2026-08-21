@@ -128,7 +128,13 @@ jobs:
           gap=$((curr_run - prev_run - 1))
           if [ "$gap" -gt 0 ]; then
             mkdir -p evidence/gaps
-            g="evidence/gaps/GAP__${{ steps.ts.outputs.DAY_UTC }}.txt"
+            # One file per (prev_run, curr_run) pair, not one per UTC day -- two
+            # gaps landing on the same calendar day used to overwrite each other
+            # (both used cat > against the same day-only filename), silently
+            # losing the earlier one. Confirmed structurally by dipankarsarkar,
+            # 2026-08-21: the write path truncates, so the empty slot for a lost
+            # gap then reads as "no gap" instead of "we can't see it anymore."
+            g="evidence/gaps/GAP__${{ steps.ts.outputs.DAY_UTC }}__${prev_run}-${curr_run}.txt"
             cat > "$g" <<EOF
           GAP DETECTED (facts only)
           prev_receipt=$prev_file
