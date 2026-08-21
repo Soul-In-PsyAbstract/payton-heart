@@ -64,15 +64,21 @@ jobs:
 
       - name: Check payload has not gone stale (cross-day duplicate detection)
         run: |
-          # Compare only RUN_NUMBER + COMMIT_SHA, not the whole receipt. TS_UTC
-          # (date -u with seconds) and RUN_ID (globally unique per run) differ on
-          # every single execution by construction, so hashing the full file
-          # masks the one case that actually matters: provenance itself failing
-          # to advance while those two noise fields still tick over normally.
-          # See dipankarsarkar's masking analysis, 2026-08-20: with the old
-          # whole-file hash, 14 of 15 field-subset masks still passed — only
-          # masking all 4 fields at once ever made the gate fire.
-          sig() { grep -E '^(RUN_NUMBER|COMMIT_SHA)=' "$1" | sha256sum | cut -d' ' -f1; }
+          # RUN_NUMBER only, not RUN_NUMBER+COMMIT_SHA. GITHUB_RUN_NUMBER is
+          # guaranteed monotonic per-workflow by GitHub itself — it can only
+          # repeat across two receipts if someone manually re-runs an old
+          # failed job via "Re-run failed jobs" (same run_number, higher
+          # run_attempt). That has never happened here (0/208 runs). Adding
+          # COMMIT_SHA into the signature contributed zero extra detection
+          # power for that case but did make the check fragile to hand
+          # commits between scheduled runs — it fired false-positive twice
+          # (2026-08-18 and again on the very fix commit for this, 2026-08-21)
+          # because COMMIT_SHA in a receipt doesn't match the commit that
+          # *added* the previous receipt when a human pushes by hand in
+          # between. See dipankarsarkar's analysis, 2026-08-21: "RUN_NUMBER
+          # has no such coupling because the counter belongs to the workflow,
+          # not the branch. One column, not two."
+          sig() { grep -E '^RUN_NUMBER=' "$1" | sha256sum | cut -d' ' -f1; }
           today_file="$WROTE"
           today_sig="$(sig "$today_file")"
           match=""
@@ -84,15 +90,63 @@ jobs:
             fi
           done
           if [ -n "$match" ]; then
-            echo "::error::Today's RUN_NUMBER/COMMIT_SHA signature matches $match — provenance did not advance, even though TS_UTC/RUN_ID differ."
+            echo "::error::Today's RUN_NUMBER signature matches $match — provenance did not advance, even though TS_UTC/RUN_ID differ."
             exit 1
           fi
-          echo "OK: RUN_NUMBER/COMMIT_SHA signature ($today_sig) is new."
+          echo "OK: RUN_NUMBER signature ($today_sig) is new."
+
+      - name: Check for RUN_NUMBER gap since last receipt (facts only, non-blocking)
+        run: |
+          # A gap means at least one run of this workflow between the last
+          # receipt and this one produced no receipt — i.e. it failed before
+          # the commit step. GITHUB_RUN_NUMBER is monotonic per-workflow by
+          # GitHub's own guarantee, so a gap here is a hard sequential fact,
+          # not an inference. This is the detector sig() never was: sig()
+          # only catches duplicates (a case with zero historical instances),
+          # never gaps (the case that has happened 3 times: runs 20, 164,
+          # 204). Run 204 failed 2026-08-18 and left no receipt; run 205
+          # (a manual dispatch 47.8 min later) silently covered that day's
+          # date, and no code in this repo read the hole until now. See
+          # dipankarsarkar's analysis, 2026-08-21.
+          #
+          # Non-blocking by design: a gap in PAST runs is not this run's
+          # fault, and this run already succeeded — failing it would not
+          # un-happen the earlier failure, only hide today's good receipt
+          # behind a red X. The gap is recorded as evidence instead.
+          count="$(ls -1 evidence/daily/RECEIPT__*.txt 2>/dev/null | wc -l)"
+          if [ "$count" -lt 2 ]; then
+            echo "Fewer than 2 receipts total — nothing to compare yet."
+            exit 0
+          fi
+          prev_file="$(ls -1 evidence/daily/RECEIPT__*.txt | sort | tail -2 | head -1)"
+          prev_run="$(grep '^RUN_NUMBER=' "$prev_file" | cut -d= -f2)"
+          curr_run="$GITHUB_RUN_NUMBER"
+          if [ -z "$prev_run" ]; then
+            echo "Previous receipt ($prev_file) predates RUN_NUMBER tracking (pre-2026-08-17 format) — nothing to compare."
+            exit 0
+          fi
+          gap=$((curr_run - prev_run - 1))
+          if [ "$gap" -gt 0 ]; then
+            mkdir -p evidence/gaps
+            g="evidence/gaps/GAP__${{ steps.ts.outputs.DAY_UTC }}.txt"
+            cat > "$g" <<EOF
+          GAP DETECTED (facts only)
+          prev_receipt=$prev_file
+          prev_run_number=$prev_run
+          curr_run_number=$curr_run
+          missing_runs=$gap
+          detected_at=${{ steps.ts.outputs.TS_UTC }}
+          EOF
+            sha256sum "$g" > "$g.sha256"
+            echo "::warning::RUN_NUMBER gap detected: $gap run(s) between $prev_run and $curr_run produced no receipt (see $g)"
+          else
+            echo "OK: no RUN_NUMBER gap ($prev_run -> $curr_run)."
+          fi
 
       - name: Commit evidence
         run: |
           git config user.name "payton-ci"
           git config user.email "payton-ci@users.noreply.github.com"
-          git add evidence/daily evidence/manifests
+          git add evidence/daily evidence/manifests evidence/gaps
           git commit -m "evidence: daily receipt ${{ steps.ts.outputs.TS_UTC }}" || exit 0
           git push
