@@ -1,0 +1,17 @@
+🔴 RECEIPT · CI DAILY TICK (FACTS ONLY)
+SYSTEM: SoulInPsyAbstract
+SCOPE: REMOTE / CI
+MODE: LEGAL · FACTUAL
+EXECUTION_CONTEXT=CI
+RUNTIME=REMOTE
+CLAIMS=NONE
+
+RUN_ID=41801562169
+RUN_NUMBER=285
+COMMIT_SHA=26bc1103a5f234016181d81b7e8ff3acf87d20e3
+TS_UTC=2026-11-04__08-42-31__UTC
+
+FACTS:
+- This job executed in GitHub Actions as scheduled or manually dispatched.
+- This receipt is an append-only evidence artifact.
+- No intent, no interpretation, no external side effects recorded here.
